@@ -1,0 +1,116 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    # container_name: ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    volumes:
+      - ./data/ollama/:/root/.ollama
+    networks:
+      - my-network
+    profiles:
+      - all
+      - n8n
+    # Healthchecks on ollama images can fail if curl/wget aren't present.
+    # Removing healthcheck avoids false negatives; we'll probe from host instead.
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    # container_name: qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"  # HTTP
+      - "6334:6334"  # gRPC
+    volumes:
+      - ./data/qdrant/:/qdrant/storage
+    networks:
+      - my-network
+    profiles:
+      - all
+      - n8n
+
+  redis:
+    image: redis:alpine
+    # container_name: redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./data/redis/:/data
+    networks:
+      - my-network
+    profiles:
+      - all
+      - n8n
+      
+  n8n:
+    image: n8nio/n8n:latest
+    # container_name: n8n
+    restart: unless-stopped
+    depends_on:
+      - ollama
+      - qdrant
+      - redis
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_DIAGNOSTICS_ENABLED=false
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY:-change_me}
+      - OLLAMA_URL=http://ollama:11434
+      - QDRANT_URL=http://qdrant:6333
+      - REDIS_URL=redis://redis:6379
+    volumes:
+      - ./data/n8n/:/home/node/.n8n
+    networks:
+      - my-network
+    profiles:
+      - all
+      - n8n
+
+  web:
+    image: node:20-alpine
+    working_dir: /app
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./web:/app
+      - /app/node_modules
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 3000"
+    networks:
+      - my-network
+    profiles:
+      - all
+      - web
+
+  postgres:
+    healthcheck:
+      test: ["CMD-SHELL", "sh -c 'pg_isready -U postgres_admin -d postgres'"]
+      interval: 3s
+      timeout: 3s
+      retries: 3
+    attach: false
+    image: postgres:15.4
+    restart: unless-stopped
+    ports:
+      - 5432:5432
+    # container_name: postgres
+    volumes:
+      - ./data/postgres/:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-postgres_admin}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-S3cret}
+      - POSTGRES_DB=${POSTGRES_DB:-postgres}
+    logging:
+      driver: none
+    networks:
+      - my-network
+    profiles:
+      - all
+      - postgres
+
+networks:
+  my-network:
+    driver: bridge

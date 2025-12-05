@@ -1,0 +1,7 @@
+FROM flyway/flyway:11.3-alpine
+
+# Copy migrations from your repo into the container
+COPY migrations/ /flyway/migrations/
+
+# Default command to run migrations
+CMD ["validate"]
