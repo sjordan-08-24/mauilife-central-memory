@@ -1,0 +1,14 @@
+For the homeowner table. What will be used to record the sensitive contacts info like their tax ID numbers?
+
+    -- Entity info (specific to how this owner holds this property)
+    entity_name text,
+    entity_tax_id text,
+    tax_classification text,
+    I don't think we need to store this in the homeowner properties table because the entity will be linked to the contact which will have the tax ID number, and we just need a flag for the homeowner property homeowner type. If they are the for who is the different roles which is the main point of contact or the for all things with the contract or for maintenance the property design or for payment or who receives payment.
+
+what was taken out from the original resort table, this table seems a lot smaller?
+
+For the join tables and the homeowners, do we need to define where can we link the relationship between homeowners of the same property and the same homeowner_properties table?
+
+
+

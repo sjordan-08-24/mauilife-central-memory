@@ -1,0 +1,69 @@
+/*
+ * Button Styles
+ *
+ * These styles make our button look nice and provide
+ * different appearances for different situations.
+ */
+
+/* Base button styles - applies to ALL buttons */
+.button {
+  /* Padding adds space inside the button */
+  padding: 10px 20px;
+
+  /* Rounded corners */
+  border-radius: 6px;
+
+  /* Remove default border */
+  border: none;
+
+  /* Text styling */
+  font-size: 16px;
+  font-weight: 500;
+
+  /* Make the cursor a pointer (hand) on hover */
+  cursor: pointer;
+
+  /* Smooth color transitions */
+  transition: background-color 0.2s ease, opacity 0.2s ease;
+}
+
+/* Primary button - the main action button (blue) */
+.button-primary {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.button-primary:hover {
+  background-color: #2563eb;
+}
+
+/* Secondary button - for less important actions (gray) */
+.button-secondary {
+  background-color: #6b7280;
+  color: white;
+}
+
+.button-secondary:hover {
+  background-color: #4b5563;
+}
+
+/* Danger button - for destructive actions like delete (red) */
+.button-danger {
+  background-color: #ef4444;
+  color: white;
+}
+
+.button-danger:hover {
+  background-color: #dc2626;
+}
+
+/* Disabled state - when button can't be clicked */
+.button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Loading state - subtle pulse animation */
+.button-loading {
+  opacity: 0.7;
+}

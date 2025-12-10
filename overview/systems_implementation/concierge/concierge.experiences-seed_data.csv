@@ -1,0 +1,8 @@
+"experience_name","experience_slug","area_id (ref)","type","access_type","street_address","latitude","longitude","vibe_tags","safety_notes","best_time_to_visit","good_for_photos","risk_level"
+"Nakalele Blowhole","nakalele-blowhole","kapalua","natural_wonder","short_hike","Poelua Bay Dr","21.027","-156.589","rugged, wet, power","Stay back from the edge; wet rock is dangerous.","High Tide","TRUE","High"
+"Olivine Pools","olivine-pools","kapalua","tide_pools","short_hike","Kahekili Hwy","21.013","-156.568","swim, lava, dangerous","Deadly during high surf; never turn back to ocean.","Low Tide","TRUE","Extreme"
+"Oheo Gulch (Seven Pools)","oheo-gulch","kipahulu","natural_wonder","drive","Hana Hwy MM 42","20.661","-156.045","waterfalls, swim","Swimming often closed due to flash flood risk.","Morning","TRUE","Med"
+"Dragon's Teeth","dragons-teeth","kapalua","natural_wonder","short_hike","Makaluapuna Point","21.002","-156.655","geology, jagged","Sharp rocks; stick to the path.","Sunset","TRUE","Low"
+"Turtle Town","turtle-town","makena","snorkel_spot","boat/swim","Maluaka Beach","20.647","-156.441","turtles, clear, calm","Watch for boats if swimming far out.","Morning","TRUE","Low"
+"Jaws (Peʻahi)","jaws-peahi","peahi","natural_wonder","drive","Hulse Rd","20.943","-156.310","huge-waves, viewing","4WD required for access road; cliffs are unstable.","Winter","TRUE","Med"
+"Rainbow Bridge","rainbow-bridge","paia","natural_wonder","walk","Hana Hwy","20.928","-156.369","turtles, river","Do not disturb turtles resting on the beach.","Afternoon","TRUE","Low"

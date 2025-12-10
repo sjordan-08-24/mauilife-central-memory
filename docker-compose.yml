@@ -85,6 +85,28 @@ services:
       - all
       - web
 
+  server:
+    build: ./server
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "3001:3001"
+    environment:
+      - SERVER_PORT=3001
+      - JWT_SECRET=${JWT_SECRET:-change-this-to-a-strong-secret-in-production}
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=${POSTGRES_USER:-postgres_admin}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-S3cret}
+      - POSTGRES_DB=${POSTGRES_DB:-postgres}
+    networks:
+      - my-network
+    profiles:
+      - all
+      - web
+
   postgres:
     healthcheck:
       test: ["CMD-SHELL", "sh -c 'pg_isready -U postgres_admin -d postgres'"]
@@ -103,8 +125,6 @@ services:
       - POSTGRES_USER=${POSTGRES_USER:-postgres_admin}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-S3cret}
       - POSTGRES_DB=${POSTGRES_DB:-postgres}
-    logging:
-      driver: none
     networks:
       - my-network
     profiles:

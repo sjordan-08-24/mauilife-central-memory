@@ -1,0 +1,1268 @@
+Hold Up - Important Clarification
+Direct Answer
+No, you don't train GLM-4.6V like YOLO. It works completely differently, and honestly, better for your use case.
+How This Actually Works
+YOLO Method (what you're thinking):
+Train model on 1,000 photos → Model learns "this is what pillows look like" → 
+Detects "pillow present/missing" → Binary output
+GLM-4.6V Method (what it actually does):
+Give it reference photo + current photo in same prompt → 
+Model compares them visually → 
+Describes differences contextually → 
+Explains significance for your business
+Why This Is Better For VRM
+Example: Missing Pillow Detection
+What you send to GLM-4.6V:
+Prompt: "Compare these two photos of Unit 402 living room. 
+         Photo 1: Reference standard from property manual
+         Photo 2: Current guest checkout inspection
+         
+         Identify any missing items, damage, or changes from standard.
+         Prioritize by replacement cost and guest experience impact."
+
+Image 1: [Your reference photo]
+Image 2: [Checkout photo]
+What GLM-4.6V returns:
+"Comparison Analysis - Unit 402 Living Room:
+
+MISSING ITEMS:
+- 2 decorative throw pillows from couch (cream colored, ~$80 replacement)
+- Remote control from coffee table
+
+CONDITION CHANGES:
+- Coffee table shows water ring damage (northeast corner)
+- Curtain tie-back is loose on left window
+
+PRIORITY:
+1. Water ring damage (affects guest experience, $200 refinishing)
+2. Missing pillows (immediate replacement needed, $80)
+3. Remote control (check under furniture before replacement)
+4. Curtain hardware (maintenance ticket, 15min fix)
+
+GUEST LIABILITY ASSESSMENT:
+- Water damage: Likely guest negligence (no coaster use)
+- Missing items: Unclear (could be storage error vs. removal)"
+Why This Beats Training
+Training Approach Problems:
+
+You need 500-1,000 photos per property per room state
+Every furniture change = retrain the model
+Only detects what you trained it on
+No contextual understanding (just "pillow: yes/no")
+Expensive and time-consuming to maintain
+
+GLM-4.6V Approach Advantages:
+
+Just needs 1 reference photo per room
+Furniture changes? Update the reference photo, done
+Detects anything different, even things you didn't anticipate
+Understands business context ("this stain matters more than that scratch")
+Zero maintenance after initial setup
+
+How You Actually Implement This
+Setup (One Time):
+1. Store reference photos in Supabase:
+   - Table: property_reference_photos
+   - Fields: property_id, room_type, photo_url, standards_notes
+   
+2. n8n workflow:
+   - Trigger: Inspection photo uploaded
+   - Fetch: Matching reference photo from Supabase
+   - Send both: To GLM-4.6V with comparison prompt
+   - Store result: Back in Supabase as inspection_report
+Per Property (One Time):
+Take 5-10 reference photos per unit:
+- Living room (wide angle)
+- Kitchen (wide angle)  
+- Each bedroom
+- Each bathroom
+- Outdoor spaces
+
+Store with property standards document
+Runtime (Automatic):
+Inspector takes checkout photo → 
+System fetches reference photo for that room →
+GLM-4.6V compares → 
+Generates detailed report →
+Creates Monday.com tasks for issues →
+Calculates guest damage charges if applicable
+The "Few-Shot Learning" Approach
+You can give GLM-4.6V examples to improve accuracy:
+Enhanced Prompt Structure:
+"You are analyzing luxury vacation rental properties in Maui.
+
+PROPERTY STANDARDS (examples):
+- All units have 6 throw pillows on living room couch
+- Coffee tables must have coaster sets (4 coasters)
+- Remote controls are stored in wicker basket on coffee table
+- Water damage to wood surfaces = immediate repair priority
+
+REFERENCE PHOTO: [Standard setup]
+INSPECTION PHOTO: [Current state]
+
+Compare and report differences prioritized by:
+1. Guest experience impact
+2. Replacement/repair cost  
+3. Turnaround time criticality"
+This "teaches" it your standards through context, not training. Much simpler.
+What About Detection Accuracy?
+Question: "Will it catch a missing pillow as reliably as trained YOLO?"
+Answer: Yes, likely better because:
+
+YOLO sees "pillow detected: 4/6" (needs you to interpret)
+GLM-4.6V sees "Two cream throw pillows missing from right side of couch, likely removed or relocated. Standard requires 6 total." (actionable insight)
+
+The vision transformer in GLM-4.6V is sophisticated enough to count objects, detect subtle differences, and understand spatial relationships—all without training.
+Cost Reality Check
+Training approach:
+
+Your time: 40-80 hours per property to collect/label training data
+Compute: $200-500 per property to train custom models
+Maintenance: 5-10 hours/month updating for changes
+
+GLM-4.6V approach:
+
+Your time: 2 hours per property to photograph reference states
+Compute: ~$0.001 per comparison (essentially free)
+Maintenance: 10 minutes when you redecorate (update reference photo)
+
+Testing This Week
+Experiment setup:
+
+Take 1 reference photo of a room in known good state
+Remove 2-3 items (pillow, remote, coaster set)
+Take "inspection" photo
+Send both to GLM-4.6V with comparison prompt
+See if it catches everything
+
+My prediction: It will catch all obvious changes and probably notice things you didn't intentionally change (lighting differences, furniture slightly moved, etc.)
+Bottom Line
+You're thinking in the old AI paradigm where "detection = training."
+New paradigm: Give the model examples in the prompt (few-shot learning) instead of training. It's faster, cheaper, more flexible, and honestly more powerful for your specific use case.
+No training required. Just reference photos + good prompts.
+Want me to write the exact n8n workflow + prompt template for your first test?Sgot it, so I keep all of the reference files ready and whenever we finish an inspection, we give it the reference photo in the new one. In the same go, throw it in at the same time, and then it comes back and gives us the difference. So the reference photo will stay ready to always send through right away with the new photo taken. Is that right?  But it's not going to actually save the reference photo in the model.Exactly Right
+You Got It Perfectly
+Your Understanding:
+Reference photo (stored in Supabase) + New inspection photo → 
+GLM-4.6V compares them in real-time → 
+Returns difference report → 
+Reference photo stays in Supabase unchanged for next time
+That's 100% correct.
+Why The Model Doesn't "Save" Anything
+GLM-4.6V is stateless. Every API call is independent:
+
+It has no memory between requests
+It doesn't "learn" from your photos
+Each comparison is a fresh analysis
+The reference photo lives in your database, not the model
+
+Think of it like a human inspector with amnesia:
+
+You hand them the reference photo + new photo every single time
+They compare and report
+Next inspection: you hand them the same reference photo again
+They don't remember the last inspection
+
+The Actual Workflow
+Storage Structure (Supabase):
+sql-- Reference photos (permanent)
+property_reference_photos
+  - id
+  - property_id (FK)
+  - room_type ("living_room", "kitchen", etc.)
+  - reference_photo_url
+  - standards_notes (optional text about what to look for)
+  - created_at
+
+-- Inspection photos (new each time)
+inspection_photos  
+  - id
+  - property_id (FK)
+  - inspection_date
+  - room_type
+  - photo_url
+  - glm_analysis (JSON response stored here)
+  - issues_detected (array)
+  - created_at
+```
+
+### n8n Workflow (Automated):
+```
+TRIGGER: Inspector uploads photo via Monday.com/mobile app
+  ↓
+NODE 1: Identify which property + room
+  ↓
+NODE 2: Query Supabase for matching reference photo
+  Query: SELECT reference_photo_url 
+         FROM property_reference_photos
+         WHERE property_id = X AND room_type = Y
+  ↓
+NODE 3: Send BOTH photos to GLM-4.6V API
+  Request body: {
+    images: [reference_photo_url, new_inspection_photo_url],
+    prompt: "Compare these photos..."
+  }
+  ↓
+NODE 4: Receive analysis (JSON response)
+  ↓
+NODE 5: Store analysis in Supabase inspection_photos table
+  ↓
+NODE 6: Create Monday.com tasks for detected issues
+  ↓
+NODE 7: If damages detected → Calculate charges → Email owner
+Why This Architecture Wins
+Advantages:
+
+Reference photos are your single source of truth (version controlled in your DB)
+No model drift - Analysis is consistent because reference never changes
+Easy updates - Redecorate Unit 402? Upload new reference photo, done
+Audit trail - Every inspection stores the full GLM response for review
+Cost efficient - Only pay for comparisons, not storage in the model
+
+What you control:
+
+Reference photo quality
+When to update reference photos
+Prompt instructions for what matters
+Historical analysis data
+
+What GLM-4.6V does:
+
+Pure comparison task
+No state to manage
+No retraining needed
+Just visual reasoning on demand
+
+Important Implementation Detail
+Photo pairing logic in n8n:
+javascript// Pseudocode for the workflow logic
+
+// Step 1: Inspector uploads photo with metadata
+const inspectionPhoto = {
+  property: "Honua Kai 402",
+  room: "living_room",
+  photo_url: "https://..."
+}
+
+// Step 2: Fetch reference photo
+const referencePhoto = await supabase
+  .from('property_reference_photos')
+  .select('reference_photo_url, standards_notes')
+  .eq('property_id', inspectionPhoto.property)
+  .eq('room_type', inspectionPhoto.room)
+  .single()
+
+// Step 3: Send both to GLM-4.6V
+const analysis = await glm4_6v.compare({
+  reference_image: referencePhoto.reference_photo_url,
+  inspection_image: inspectionPhoto.photo_url,
+  context: referencePhoto.standards_notes,
+  prompt: "Compare these luxury rental photos..."
+})
+
+// Step 4: Store the analysis
+await supabase
+  .from('inspection_photos')
+  .insert({
+    ...inspectionPhoto,
+    glm_analysis: analysis,
+    issues_detected: analysis.issues // extracted array
+  })
+```
+
+## When You Update Reference Photos
+
+**Scenarios that trigger reference photo updates:**
+
+1. **Redecorating** - New furniture, new layout → Take new reference photo
+2. **Major repairs** - Kitchen remodel → New reference photo
+3. **Seasonal changes** - Holiday decor standards → Separate seasonal references
+4. **Quality improvement** - Better lighting/angle needed → Replace reference photo
+
+**Process:**
+```
+1. Take new photo in perfect condition
+2. Upload to Supabase property_reference_photos
+3. Either:
+   a) UPDATE existing record (replaces old reference)
+   b) INSERT new record with version number (keeps history)
+Pro tip: Keep version history:
+sqlproperty_reference_photos
+  - version_number (1, 2, 3...)
+  - active (boolean - only one active per room)
+  - replaced_date
+```
+
+This way you can review past inspections with the reference photo that was active *at that time*.
+
+## Cost Projection
+
+**Per inspection:**
+- Reference photo: Already in Supabase (no API cost)
+- New inspection photo: Already uploaded (no API cost)  
+- GLM-4.6V comparison: ~$0.001 per analysis
+- Storage: ~$0.0001 per inspection record
+
+**For 100 units × 10 rooms × 52 turnovers/year:**
+- 52,000 comparisons/year
+- Cost: ~$52/year for the AI analysis
+- **Basically free compared to manual inspection time**
+
+## What Happens at Scale
+
+**Current state:** You manually review inspection photos
+**After automation:** System auto-generates reports, you review exceptions
+
+**Volume handling:**
+```
+10 properties today:
+  - 50 inspections/month
+  - GLM handles all comparisons
+  - You review flagged issues only (maybe 10/month)
+
+100 properties later:
+  - 500 inspections/month  
+  - GLM still handles all comparisons
+  - You still review ~50 flagged issues/month
+  - **Your time investment doesn't scale linearly**
+You're Thinking Correctly
+The mental model you just described is exactly right:
+✅ Reference photos stored separately
+✅ Sent together with new photos each time
+✅ Model compares on-demand
+✅ No training, no model storage
+✅ Reference photos remain unchanged until you update them
+This is the correct architecture. Want me to build the first n8n workflow for one property as a proof of concept?SSo then, how do we build out a history of photos? Does this impact our schema in any way?History Schema Design
+Direct Answer
+Yes, this impacts your schema significantly. You need to track inspection history, link photos to reservations, maintain reference versions, and store AI analysis results. This is actually a major addition to your Central Memory architecture.
+The History Problem
+What you need to track:
+
+Every inspection photo taken over time
+Which reference photo was active when that inspection happened
+What GLM-4.6V found in each comparison
+Which reservation/guest the inspection belongs to
+Damage progression over time (did that stain get worse?)
+Historical context for dispute resolution
+
+Why this matters:
+
+Guest disputes: "That damage was there when we checked in"
+Insurance claims: Show progression of wear vs. sudden damage
+Property degradation tracking: Is Unit 402 declining faster than others?
+Performance analytics: Which properties need more maintenance?
+
+Updated Schema Design
+Core Tables (New + Modified)
+sql-- REFERENCE PHOTOS (versioned)
+property_reference_photos
+  id                    UUID PRIMARY KEY
+  property_id           UUID FK → properties
+  room_type             TEXT (living_room, kitchen, bedroom_1, etc.)
+  reference_photo_url   TEXT
+  standards_notes       TEXT (what to look for in this room)
+  version_number        INTEGER (1, 2, 3... for tracking changes)
+  is_active             BOOLEAN (only one active version per room)
+  effective_from        TIMESTAMP (when this version became active)
+  effective_to          TIMESTAMP (when it was replaced, NULL if current)
+  replaced_reason       TEXT (remodel, damage, redecoration, etc.)
+  created_by            UUID FK → users
+  created_at            TIMESTAMP
+
+-- INSPECTIONS (the event)
+inspections
+  id                    UUID PRIMARY KEY
+  property_id           UUID FK → properties
+  reservation_id        UUID FK → reservations (NULL for routine inspections)
+  inspection_type       TEXT (check_in, check_out, routine, emergency)
+  inspector_id          UUID FK → users (who did the inspection)
+  scheduled_date        TIMESTAMP
+  completed_date        TIMESTAMP
+  overall_status        TEXT (pending, in_progress, completed, flagged)
+  notes                 TEXT
+  created_at            TIMESTAMP
+
+-- INSPECTION PHOTOS (the actual photos + analysis)
+inspection_photos
+  id                    UUID PRIMARY KEY
+  inspection_id         UUID FK → inspections
+  room_type             TEXT (must match reference_photos.room_type)
+  photo_url             TEXT (the new photo taken)
+  reference_photo_id    UUID FK → property_reference_photos (which reference was used)
+  photo_order           INTEGER (sequence within inspection)
+  
+  -- GLM Analysis Results (stored as JSON + extracted fields)
+  glm_raw_response      JSONB (full API response)
+  glm_summary           TEXT (extracted summary)
+  issues_detected       JSONB[] (array of detected issues)
+  comparison_confidence FLOAT (if GLM provides confidence score)
+  
+  -- Metadata
+  taken_at              TIMESTAMP
+  taken_by              UUID FK → users
+  gps_coordinates       POINT (lat/long if mobile capture)
+  device_info           TEXT
+  created_at            TIMESTAMP
+
+-- DETECTED ISSUES (normalized for querying)
+inspection_issues
+  id                    UUID PRIMARY KEY
+  inspection_photo_id   UUID FK → inspection_photos
+  inspection_id         UUID FK → inspections (denormalized for fast queries)
+  property_id           UUID FK → properties (denormalized)
+  
+  issue_type            TEXT (missing_item, damage, cleanliness, maintenance)
+  severity              TEXT (critical, high, medium, low, cosmetic)
+  description           TEXT (from GLM analysis)
+  location_in_photo     JSONB (bounding box if GLM provides it)
+  
+  -- Resolution tracking
+  status                TEXT (detected, acknowledged, assigned, resolved, disputed)
+  assigned_to           UUID FK → users
+  resolution_notes      TEXT
+  resolution_cost       DECIMAL
+  guest_liable          BOOLEAN
+  resolved_at           TIMESTAMP
+  
+  -- Linking to tasks/charges
+  monday_task_id        TEXT
+  charge_id             UUID FK → guest_charges
+  
+  created_at            TIMESTAMP
+  updated_at            TIMESTAMP
+
+-- GUEST CHARGES (for damage tracking)
+guest_charges
+  id                    UUID PRIMARY KEY
+  reservation_id        UUID FK → reservations
+  inspection_issue_id   UUID FK → inspection_issues
+  charge_type           TEXT (damage, missing_item, extra_cleaning, etc.)
+  amount                DECIMAL
+  description           TEXT
+  evidence_photo_urls   TEXT[] (links to inspection_photos)
+  status                TEXT (pending, approved, disputed, paid, waived)
+  dispute_notes         TEXT
+  created_at            TIMESTAMP
+```
+
+## How History Flows Through The System
+
+### Timeline Example: Unit 402 Living Room
+```
+2024-01-15: Reference Photo v1 uploaded
+  ↓
+2024-02-01: Check-in inspection (Reservation #1234)
+  - Photo compared to Reference v1
+  - No issues detected
+  ↓
+2024-02-08: Check-out inspection (Reservation #1234)
+  - Photo compared to Reference v1
+  - Issue detected: Water ring on coffee table
+  - Charge created: $200
+  ↓
+2024-02-09: Maintenance repair
+  - Coffee table refinished
+  ↓
+2024-02-10: Post-repair photo
+  - Photo compared to Reference v1
+  - Issue resolved, marked as fixed
+  ↓
+2024-03-01: Major remodel (new furniture)
+  - Reference Photo v2 uploaded
+  - v1 marked inactive (effective_to = 2024-03-01)
+  ↓
+2024-03-15: Check-in inspection (Reservation #5678)
+  - Photo compared to Reference v2 (new standard)
+  - No issues detected
+Query Patterns You'll Need
+1. Get Current Reference Photos for Property
+sqlSELECT room_type, reference_photo_url, standards_notes
+FROM property_reference_photos
+WHERE property_id = $1 
+  AND is_active = true
+ORDER BY room_type;
+2. Full Inspection History for Property
+sqlSELECT 
+  i.completed_date,
+  i.inspection_type,
+  ip.room_type,
+  ip.photo_url,
+  ip.glm_summary,
+  COUNT(ii.id) as issues_count
+FROM inspections i
+JOIN inspection_photos ip ON ip.inspection_id = i.id
+LEFT JOIN inspection_issues ii ON ii.inspection_photo_id = ip.id
+WHERE i.property_id = $1
+GROUP BY i.id, ip.id
+ORDER BY i.completed_date DESC;
+3. Damage Progression Over Time
+sql-- "Has this stain gotten worse?"
+SELECT 
+  ip.taken_at,
+  ip.photo_url,
+  ii.description,
+  ii.severity
+FROM inspection_issues ii
+JOIN inspection_photos ip ON ip.id = ii.inspection_photo_id
+WHERE ii.property_id = $1
+  AND ii.issue_type = 'damage'
+  AND ii.description ILIKE '%coffee table%'
+ORDER BY ip.taken_at;
+4. Guest Dispute Evidence
+sql-- "Show me check-in vs check-out for this reservation"
+SELECT 
+  i.inspection_type,
+  ip.room_type,
+  ip.photo_url,
+  ip.glm_summary,
+  ii.description as issue,
+  gc.amount as charge
+FROM inspections i
+JOIN inspection_photos ip ON ip.inspection_id = i.id
+LEFT JOIN inspection_issues ii ON ii.inspection_photo_id = ip.id
+LEFT JOIN guest_charges gc ON gc.inspection_issue_id = ii.id
+WHERE i.reservation_id = $1
+ORDER BY i.inspection_type, ip.room_type;
+5. Property Performance Analytics
+sql-- "Which properties have most damage claims?"
+SELECT 
+  p.name,
+  COUNT(DISTINCT ii.id) as total_issues,
+  SUM(CASE WHEN ii.severity = 'critical' THEN 1 ELSE 0 END) as critical_issues,
+  SUM(gc.amount) as total_charges
+FROM properties p
+JOIN inspections i ON i.property_id = p.id
+JOIN inspection_issues ii ON ii.inspection_id = i.id
+LEFT JOIN guest_charges gc ON gc.inspection_issue_id = ii.id
+WHERE i.completed_date >= NOW() - INTERVAL '12 months'
+GROUP BY p.id
+ORDER BY total_charges DESC;
+Impact on Existing Schema
+Tables You Need to Add Relationships To:
+properties table:
+sql-- Add if not already present
+ALTER TABLE properties ADD COLUMN 
+  current_condition_score FLOAT; -- Auto-calculated from recent inspections
+reservations table:
+sql-- Add if not already present  
+ALTER TABLE reservations ADD COLUMN
+  check_in_inspection_id UUID FK → inspections,
+  check_out_inspection_id UUID FK → inspections,
+  damage_charges_total DECIMAL;
+users table:
+sql-- Add if not already present
+ALTER TABLE users ADD COLUMN
+  role TEXT; -- inspector, cleaner, maintenance, manager
+```
+
+## Storage Considerations
+
+### Photo Storage Strategy:
+
+**Option 1: Supabase Storage (Recommended)**
+```
+Structure:
+/inspections
+  /{property_id}
+    /{inspection_id}
+      /living_room_001.jpg
+      /kitchen_001.jpg
+      
+/references
+  /{property_id}
+    /{room_type}_v{version}.jpg
+```
+
+**Benefits:**
+- Direct integration with Supabase DB
+- Automatic CDN delivery
+- Signed URLs for security
+- Easy to query alongside data
+
+**Option 2: Google Drive (Current)**
+```
+Keep reference photos in Drive for easy manual access
+Store inspection photos in Supabase for programmatic access
+Link via URLs in database
+Photo Retention Policy:
+sql-- Archive old inspection photos after resolution
+inspection_photos
+  archived_at        TIMESTAMP
+  archive_location   TEXT (if moved to cold storage)
+  
+-- Policy: Keep active inspections forever
+--         Archive resolved issues after 2 years
+--         Delete archived after 7 years (legal requirement)
+```
+
+## n8n Workflow Updates
+
+### Enhanced Inspection Workflow:
+```
+TRIGGER: Photo uploaded
+  ↓
+1. Create/Update inspection record
+  ↓
+2. Fetch active reference photo for this room
+   (WHERE is_active = true)
+  ↓
+3. Send both to GLM-4.6V
+  ↓
+4. Store inspection_photo record
+   (links to specific reference_photo_id used)
+  ↓
+5. Parse GLM response → Create inspection_issues records
+  ↓
+6. If issues found:
+   a. Create Monday.com tasks
+   b. Generate guest_charges if applicable
+   c. Send notifications
+  ↓
+7. Update inspection.overall_status
+Migration Strategy
+Phase 1: Schema Setup (Week 1)
+sql-- Create new tables
+-- Migrate existing inspection data if any
+-- Set up reference photos for top 5 properties
+```
+
+### Phase 2: Workflow Integration (Week 2-3)
+```
+-- Build n8n workflows
+-- Test with manual photo uploads
+-- Validate GLM responses stored correctly
+```
+
+### Phase 3: Historical Backfill (Week 4)
+```
+-- Import past inspection photos if available
+-- Link to existing reservations
+-- Generate baseline analytics
+```
+
+## Data Volume Projections
+
+**Per property per year:**
+```
+52 turnovers × 10 rooms = 520 inspection photos
+520 photos × 2KB metadata = 1MB database storage
+520 photos × 2MB avg = 1GB photo storage
+
+100 properties = 100MB DB + 100GB photos annually
+```
+
+**Retention:**
+```
+Keep 7 years = 700MB DB + 700GB photos
+With compression/archiving = ~350GB actual storage
+Cost: ~$7/month Supabase storage
+Analytics You Can Now Build
+With this schema, you unlock:
+
+Property Health Dashboards
+
+Issue frequency by property
+Damage cost trends
+Maintenance response times
+
+
+Guest Behavior Patterns
+
+Which guest demographics cause more damage?
+Seasonal damage patterns
+Dispute resolution rates
+
+
+Predictive Maintenance
+
+"Coffee table in 402 shows progressive damage, replace before failure"
+"Living room carpet in 305 due for replacement based on wear rate"
+
+
+Financial Forecasting
+
+Average damage costs per property
+Maintenance budget predictions
+Guest charge recovery rates
+
+
+
+Bottom Line
+Yes, this significantly impacts your schema. But it's a good impact because:
+✅ Enables full audit trail for disputes
+✅ Tracks property condition over time
+✅ Links inspections to reservations and charges
+✅ Preserves reference photo versions
+✅ Makes historical analysis possible
+✅ Supports your "remove yourself from operations" goal
+Next Steps:
+
+Review this schema against your existing Canon schema
+Identify overlaps with current tables
+Plan migration for any existing inspection data
+Decide: Supabase Storage vs Google Drive for photos
+
+Want me to write the actual Flyway migration files to add these tables to your Canon schema?SExactly. We need to have a score rating for property conditions. We're not comparing the marginal difference between the original reference photo and the current state, and every time that's taken we are marking the difference.   And then it's also tracking the difference in any inventory from the property (pillows, lamps, etc.) on what everything was looking like and marking all pieces down. Comparing all inventory photos and then it would need to track the difference rate. Then it's going to see the difference and look at the notes from all the past versions to come up with a current state. Once it's rated everything independently in that pass.Property Condition Scoring System - Schema Design
+Direct Answer
+You need a degradation tracking system that:
+
+Scores each room/item independently on every inspection
+Compares current score vs reference baseline (not just previous inspection)
+Tracks rate of decline over time
+Aggregates historical notes to inform current assessment
+Rolls up to overall property health score
+
+This is significantly more complex than simple photo comparison. This is a temporal analytics system.
+The Core Concept
+What you're building:
+Reference Photo (Score: 100) = Baseline
+  ↓
+Inspection 1 (Score: 98) → -2 from baseline, -2 rate
+  ↓
+Inspection 2 (Score: 95) → -5 from baseline, -3 rate (accelerating)
+  ↓
+Inspection 3 (Score: 94) → -6 from baseline, -1 rate (slowing)
+  ↓
+GLM analyzes: "Couch wear pattern consistent across 3 inspections.
+              Rate of decline slowing. Projected replacement: 8 months.
+              Current condition: Acceptable but monitor."
+Not just: "What's different now?"
+But: "How fast is this deteriorating and when will it fail?"
+Updated Schema Architecture
+1. INVENTORY MASTER (What exists)
+sql-- Define every physical item in every property
+property_inventory
+  id                        UUID PRIMARY KEY
+  property_id               UUID FK → properties
+  room_type                 TEXT
+  item_category             TEXT (furniture, decor, appliance, fixture, linen)
+  item_type                 TEXT (couch, lamp, pillow, etc.)
+  item_name                 TEXT (West Elm Leather Couch - Tan)
+  quantity_expected         INTEGER (6 pillows, 2 lamps, etc.)
+  replacement_cost          DECIMAL
+  
+  -- Baseline condition
+  baseline_photo_url        TEXT (pristine condition photo)
+  baseline_condition_score  INTEGER (always 100)
+  baseline_notes            TEXT
+  baseline_established_date TIMESTAMP
+  
+  -- Current state (denormalized for fast access)
+  current_condition_score   INTEGER (recalculated on each inspection)
+  last_inspected_at         TIMESTAMP
+  last_inspection_id        UUID FK → inspections
+  
+  -- Lifecycle tracking
+  install_date              DATE
+  expected_lifespan_months  INTEGER
+  replacement_scheduled_at  TIMESTAMP
+  
+  created_at                TIMESTAMP
+  updated_at                TIMESTAMP
+2. CONDITION ASSESSMENTS (Time-series scoring)
+sql-- Every inspection creates condition scores for each item
+item_condition_assessments
+  id                        UUID PRIMARY KEY
+  inspection_id             UUID FK → inspections
+  inventory_item_id         UUID FK → property_inventory
+  
+  -- Photo evidence
+  inspection_photo_id       UUID FK → inspection_photos
+  reference_photo_id        UUID FK → property_reference_photos
+  
+  -- GLM Scoring (0-100 scale)
+  condition_score           INTEGER (0=destroyed, 100=pristine)
+  previous_score            INTEGER (from last inspection, denormalized)
+  score_change              INTEGER (current - previous)
+  score_change_rate         FLOAT (change per day since last inspection)
+  baseline_delta            INTEGER (current - baseline 100)
+  
+  -- GLM Analysis
+  glm_raw_response          JSONB (full analysis)
+  visual_differences        TEXT[] (array of detected changes)
+  wear_patterns             TEXT[] (stains, fading, scratches, etc.)
+  severity_assessment       TEXT (pristine, excellent, good, fair, poor, critical)
+  
+  -- Quantity verification (for countable items)
+  quantity_found            INTEGER (actual count)
+  quantity_expected         INTEGER (from inventory master)
+  quantity_missing          INTEGER (calculated)
+  
+  -- Predictive analytics
+  projected_replacement_date TIMESTAMP (GLM prediction based on trend)
+  recommended_action        TEXT (monitor, repair, replace, clean, etc.)
+  urgency                   TEXT (routine, soon, urgent, immediate)
+  
+  -- Historical context awareness
+  historical_notes_reviewed INTEGER (how many past assessments GLM analyzed)
+  trend_direction           TEXT (improving, stable, declining, accelerating_decline)
+  
+  created_at                TIMESTAMP
+3. CONDITION TRENDS (Aggregate view)
+sql-- Materialized view for fast trend analysis
+item_condition_trends
+  inventory_item_id         UUID PRIMARY KEY
+  property_id               UUID
+  
+  -- Scoring stats
+  current_score             INTEGER
+  baseline_score            INTEGER (always 100)
+  lifetime_delta            INTEGER
+  
+  -- Time series
+  first_assessment_date     TIMESTAMP
+  last_assessment_date      TIMESTAMP
+  total_assessments         INTEGER
+  
+  -- Degradation metrics
+  avg_score_decline_per_month FLOAT
+  max_single_decline        INTEGER (biggest drop between inspections)
+  decline_acceleration      FLOAT (is it getting worse faster?)
+  
+  -- Projections
+  projected_score_6mo       INTEGER
+  projected_score_12mo      INTEGER
+  projected_replacement_date TIMESTAMP
+  confidence_level          FLOAT (how reliable is the projection)
+  
+  last_calculated_at        TIMESTAMP
+4. ROOM CONDITION SCORES (Rollup)
+sql-- Aggregate all items in a room
+room_condition_scores
+  id                        UUID PRIMARY KEY
+  inspection_id             UUID FK → inspections
+  property_id               UUID FK → properties
+  room_type                 TEXT
+  
+  -- Aggregate scoring
+  overall_room_score        INTEGER (weighted avg of all items)
+  item_count                INTEGER
+  items_pristine            INTEGER (score 95-100)
+  items_good                INTEGER (score 80-94)
+  items_fair                INTEGER (score 60-79)
+  items_poor                INTEGER (score 40-59)
+  items_critical            INTEGER (score 0-39)
+  
+  -- Issues
+  missing_items_count       INTEGER
+  items_needing_attention   INTEGER
+  estimated_repair_cost     DECIMAL
+  
+  -- Trend
+  score_vs_last_inspection  INTEGER (change)
+  trend_direction           TEXT
+  
+  created_at                TIMESTAMP
+5. PROPERTY HEALTH SCORE (Top-level)
+sql-- Overall property condition
+property_health_scores
+  id                        UUID PRIMARY KEY
+  property_id               UUID FK → properties
+  inspection_id             UUID FK → inspections
+  
+  -- Overall health (weighted by room importance)
+  overall_health_score      INTEGER (0-100)
+  grade                     TEXT (A+, A, B, C, D, F)
+  
+  -- Room breakdown
+  room_scores               JSONB ({living_room: 92, kitchen: 88, ...})
+  worst_room                TEXT
+  worst_room_score          INTEGER
+  
+  -- Financial impact
+  total_repair_cost_estimate DECIMAL
+  total_replacement_cost_estimate DECIMAL
+  deferred_maintenance_cost DECIMAL
+  
+  -- Trends
+  score_vs_last_inspection  INTEGER
+  score_vs_6mo_ago          INTEGER
+  score_vs_1yr_ago          INTEGER
+  decline_rate_monthly      FLOAT
+  
+  -- Actionable insights
+  critical_issues_count     INTEGER
+  urgent_repairs_needed     INTEGER
+  recommended_capex_budget  DECIMAL
+  
+  -- Predictions
+  projected_score_6mo       INTEGER
+  projected_score_12mo      INTEGER
+  at_risk_of_decline        BOOLEAN
+  
+  created_at                TIMESTAMP
+How GLM-4.6V Processes This
+Enhanced Prompt Structure:
+javascriptconst prompt = `
+You are analyzing luxury vacation rental property condition.
+
+CONTEXT - PROPERTY INVENTORY ITEM:
+- Item: ${item.item_name}
+- Category: ${item.item_category}
+- Room: ${item.room_type}
+- Expected Quantity: ${item.quantity_expected}
+- Replacement Cost: $${item.replacement_cost}
+- Baseline Established: ${item.baseline_established_date}
+
+HISTORICAL ASSESSMENTS (Last 5 Inspections):
+${historicalAssessments.map(a => `
+  Date: ${a.created_at}
+  Score: ${a.condition_score}/100 (Δ${a.score_change})
+  Issues: ${a.visual_differences.join(', ')}
+  Notes: ${a.wear_patterns.join(', ')}
+`).join('\n')}
+
+TREND ANALYSIS:
+- Average decline rate: ${trend.avg_score_decline_per_month} points/month
+- Trend direction: ${trend.trend_direction}
+- Last inspection score: ${lastAssessment.condition_score}
+
+IMAGES TO ANALYZE:
+1. BASELINE REFERENCE (Score: 100) - Pristine condition
+2. CURRENT INSPECTION - Today's state
+
+SCORING INSTRUCTIONS:
+Rate current condition on 0-100 scale where:
+- 100: Perfect, matches baseline exactly
+- 95-99: Excellent, barely perceptible wear
+- 85-94: Good, normal wear for age
+- 70-84: Fair, noticeable wear but functional
+- 50-69: Poor, significant wear, repair recommended
+- 25-49: Critical, needs immediate attention
+- 0-24: Failed, must replace
+
+ASSESSMENT REQUIREMENTS:
+1. CONDITION SCORE: Single integer 0-100
+2. SCORE JUSTIFICATION: Specific visual differences from baseline
+3. QUANTITY VERIFICATION: Count items (if applicable)
+4. WEAR PATTERNS: List all degradation types (stains, fading, damage, etc.)
+5. TREND ANALYSIS: Compare to historical notes - is decline accelerating?
+6. SEVERITY: Classify as pristine/excellent/good/fair/poor/critical
+7. RECOMMENDED ACTION: monitor/clean/repair/replace
+8. URGENCY: routine/soon/urgent/immediate
+9. PROJECTED REPLACEMENT DATE: Based on current decline rate
+10. CONFIDENCE: Your confidence in the projection (low/medium/high)
+
+Be consistent with historical scoring. If past notes mention a stain that still exists, 
+acknowledge continuity. If new damage appears, note the change clearly.
+
+Return structured JSON.
+`;
+GLM Response Structure:
+json{
+  "condition_score": 87,
+  "score_justification": "Couch shows moderate cushion compression on left side, consistent with wear pattern noted in last 3 inspections. Fabric integrity intact but visible sheen developing on armrests. No new damage since last inspection.",
+  
+  "quantity_verification": {
+    "expected": 6,
+    "found": 5,
+    "missing": 1,
+    "missing_items": ["Decorative throw pillow - cream with gold pattern"]
+  },
+  
+  "visual_differences_from_baseline": [
+    "Left cushion compressed 15% more than baseline",
+    "Armrest fabric showing light sheen from body oils",
+    "Minor discoloration on right cushion edge (likely sun exposure)",
+    "Overall shape maintaining structural integrity"
+  ],
+  
+  "wear_patterns": [
+    "compression_wear",
+    "fabric_sheen", 
+    "sun_fading",
+    "oil_transfer"
+  ],
+  
+  "trend_analysis": {
+    "comparison_to_history": "Decline rate consistent with previous 4 inspections (avg -1.5 points/month). No acceleration detected. Wear pattern matches predicted aging.",
+    "historical_continuity": "Compression issue first noted 6 months ago, progressing as expected. Sun fading stable since curtains adjusted 3 months ago.",
+    "new_issues": "None - all current wear was present in previous inspection"
+  },
+  
+  "severity_assessment": "good",
+  
+  "recommended_action": "monitor",
+  
+  "urgency": "routine",
+  
+  "projected_replacement_date": "2026-08-15",
+  "projection_reasoning": "At current decline rate of 1.5 points/month, item will reach replacement threshold (score 65) in approximately 15 months. Cushion compression accelerates in final 6 months of lifecycle.",
+  
+  "confidence_level": "high",
+  "confidence_reasoning": "Strong historical data (5 consistent inspections). Wear pattern matches manufacturer lifecycle expectations for this couch model."
+}
+```
+
+## The Scoring Algorithm
+
+### How GLM Creates Consistent Scores:
+
+**1. Visual Delta Analysis**
+```
+Baseline Photo (Score: 100) vs Current Photo
+↓
+Detect changes:
+- Stain: -5 points
+- Compression: -3 points  
+- Fading: -2 points
+- Scratch: -3 points
+= Current Score: 87
+```
+
+**2. Historical Context Integration**
+```
+Load last 5 assessments:
+- 6mo ago: Score 92 (stain existed, compression starting)
+- 4mo ago: Score 90 (stain unchanged, compression worsening)
+- 2mo ago: Score 89 (new scratch appeared)
+- Last: Score 88 (all issues stable)
+
+Current assessment validates:
+- Stain still present (don't re-penalize)
+- Compression progressed (penalize delta only)
+- Scratch stable (don't re-penalize)
+= Adjusted Score: 87 (correct)
+```
+
+**3. Trend Projection**
+```
+Decline rate: -1.5 points/month
+Current score: 87
+Replacement threshold: 65
+Time to replacement: (87-65) / 1.5 = 14.7 months
+Inventory Tracking Integration
+Countable Items:
+sql-- Pillows, remotes, coasters, etc.
+property_inventory
+  item_type = 'throw_pillow'
+  quantity_expected = 6
+  
+item_condition_assessments
+  quantity_found = 5
+  quantity_missing = 1
+  
+  glm_analysis:
+  "5 of 6 expected throw pillows present. Missing: cream pillow with 
+   gold embroidery pattern (last seen in inspection 2024-11-15). 
+   Remaining pillows show minor compression wear consistent with normal use."
+Unique Items:
+sql-- Furniture, appliances, art
+property_inventory  
+  item_type = 'couch'
+  quantity_expected = 1
+  
+item_condition_assessments
+  quantity_found = 1
+  condition_score = 87
+  
+  glm_analysis:
+  "Item present and functional. Condition degrading at expected rate..."
+Rollup Calculation Logic
+Room Score (Weighted Average):
+javascript// Calculate room score from all items
+const roomScore = items.reduce((total, item) => {
+  // Weight by replacement cost
+  const weight = item.replacement_cost / totalRoomValue;
+  return total + (item.condition_score * weight);
+}, 0);
+
+// Example:
+// Couch ($3000): Score 87 → Weight 0.60 → Contribution 52.2
+// Lamp ($200): Score 95 → Weight 0.04 → Contribution 3.8
+// Pillows ($400): Score 92 → Weight 0.08 → Contribution 7.4
+// etc.
+// Room Score: 88.3
+Property Score (Room Importance):
+javascript// Weight rooms by guest impact
+const roomWeights = {
+  living_room: 0.25,  // High guest visibility
+  kitchen: 0.20,      // High functionality importance
+  master_bedroom: 0.20,
+  bedroom_2: 0.15,
+  bathroom_1: 0.10,
+  bathroom_2: 0.10
+};
+
+const propertyScore = Object.entries(roomScores).reduce((total, [room, score]) => {
+  return total + (score * roomWeights[room]);
+}, 0);
+```
+
+## n8n Workflow (Complete)
+```
+TRIGGER: Inspection photo uploaded for Property 402, Living Room
+
+NODE 1: Fetch inventory items for this room
+  Query: SELECT * FROM property_inventory 
+         WHERE property_id = '402' AND room_type = 'living_room'
+  Result: 12 items (couch, 6 pillows, 2 lamps, coffee table, 2 side tables)
+
+NODE 2: For each inventory item:
+  
+  LOOP START:
+  
+  A. Fetch historical assessments (last 5)
+     Query: SELECT * FROM item_condition_assessments
+            WHERE inventory_item_id = ${item.id}
+            ORDER BY created_at DESC LIMIT 5
+  
+  B. Fetch baseline reference photo
+     Query: SELECT baseline_photo_url FROM property_inventory
+            WHERE id = ${item.id}
+  
+  C. Fetch trend data
+     Query: SELECT * FROM item_condition_trends
+            WHERE inventory_item_id = ${item.id}
+  
+  D. Build GLM prompt with full context
+  
+  E. Send to GLM-4.6V:
+     - Baseline photo
+     - Current inspection photo
+     - Full prompt with history
+  
+  F. Parse GLM response
+  
+  G. Insert item_condition_assessment record
+  
+  H. Update property_inventory.current_condition_score
+  
+  LOOP END
+
+NODE 3: Calculate room score
+  - Aggregate all item scores (weighted by cost)
+  - Insert room_condition_scores record
+
+NODE 4: Calculate property health score
+  - Aggregate all room scores (weighted by importance)
+  - Insert property_health_scores record
+
+NODE 5: Generate action items
+  - Query all items where urgency = 'urgent' or 'immediate'
+  - Create Monday.com tasks for repairs/replacements
+  - Calculate total budget needed
+
+NODE 6: Send notifications
+  - Owner report: Property health score changed
+  - Manager alert: Critical issues detected
+  - Maintenance: Task assignments
+
+NODE 7: Update analytics
+  - Refresh item_condition_trends materialized view
+  - Update property degradation dashboard
+Analytics Queries You Can Now Run
+1. Property Health Report
+sqlSELECT 
+  p.name,
+  phs.overall_health_score,
+  phs.grade,
+  phs.total_repair_cost_estimate,
+  phs.decline_rate_monthly,
+  phs.projected_score_6mo
+FROM properties p
+JOIN property_health_scores phs ON phs.property_id = p.id
+WHERE phs.id = (
+  SELECT id FROM property_health_scores 
+  WHERE property_id = p.id 
+  ORDER BY created_at DESC LIMIT 1
+)
+ORDER BY phs.overall_health_score;
+2. Items Needing Attention
+sqlSELECT 
+  pi.property_id,
+  pi.room_type,
+  pi.item_name,
+  ica.condition_score,
+  ica.recommended_action,
+  ica.urgency,
+  ica.projected_replacement_date,
+  pi.replacement_cost
+FROM item_condition_assessments ica
+JOIN property_inventory pi ON pi.id = ica.inventory_item_id
+WHERE ica.urgency IN ('urgent', 'immediate')
+  AND ica.created_at = (
+    SELECT MAX(created_at) FROM item_condition_assessments
+    WHERE inventory_item_id = ica.inventory_item_id
+  )
+ORDER BY 
+  CASE ica.urgency 
+    WHEN 'immediate' THEN 1
+    WHEN 'urgent' THEN 2
+  END,
+  pi.replacement_cost DESC;
+3. Fastest Declining Items
+sqlSELECT 
+  pi.property_id,
+  pi.item_name,
+  ict.current_score,
+  ict.avg_score_decline_per_month,
+  ict.decline_acceleration,
+  ict.projected_replacement_date
+FROM item_condition_trends ict
+JOIN property_inventory pi ON pi.id = ict.inventory_item_id
+WHERE ict.decline_acceleration > 0  -- Getting worse faster
+ORDER BY ict.avg_score_decline_per_month DESC
+LIMIT 20;
+4. Budget Forecasting
+sqlSELECT 
+  DATE_TRUNC('month', ica.projected_replacement_date) as month,
+  COUNT(*) as items_needing_replacement,
+  SUM(pi.replacement_cost) as estimated_cost
+FROM item_condition_assessments ica
+JOIN property_inventory pi ON pi.id = ica.inventory_item_id
+WHERE ica.projected_replacement_date BETWEEN NOW() AND NOW() + INTERVAL '12 months'
+  AND ica.created_at = (
+    SELECT MAX(created_at) FROM item_condition_assessments
+    WHERE inventory_item_id = ica.inventory_item_id
+  )
+GROUP BY DATE_TRUNC('month', ica.projected_replacement_date)
+ORDER BY month;
+```
+
+## Migration Strategy
+
+### Phase 1: Inventory Master Setup
+```
+Week 1:
+- Build property_inventory table
+- Photograph baseline reference for top 5 properties
+- Document all items per room
+- Establish baseline scores (all 100)
+```
+
+### Phase 2: First Inspection Pass
+```
+Week 2:
+- Run first full inspection with GLM scoring
+- Validate scoring consistency
+- Tune prompt for your properties
+- Establish scoring calibration
+```
+
+### Phase 3: Historical Analysis
+```
+Week 3-4:
+- Run 2nd and 3rd inspections
+- Begin trend calculations
+- Validate projection accuracy
+- Build Monday.com integration
+```
+
+### Phase 4: Scale
+```
+Week 5+:
+- Roll out to all properties
+- Automate workflows
+- Build owner dashboards
+- Train team on system
+Bottom Line
+This is a full property intelligence system, not just photo comparison. You're building:
+✅ Time-series condition tracking
+✅ Predictive maintenance scheduling
+✅ Financial forecasting for capex
+✅ Automated quality degradation alerts
+✅ Historical audit trail for disputes
+✅ Data-driven property investment decisions
+This becomes your competitive moat - you'll know when to replace that couch before guests complain, budget accurately for upcoming repairs, and prove property condition scientifically.
+Want me to write the Flyway migrations for these tables?

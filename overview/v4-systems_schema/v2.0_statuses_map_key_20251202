@@ -1,0 +1,356 @@
+1) ref.status_type_key rows
+
+Schema
+
+CREATE TABLE ref.status_type_key (
+    status_name        TEXT PRIMARY KEY,
+    description        TEXT NOT NULL,
+    is_terminal        BOOLEAN NOT NULL DEFAULT FALSE,
+    requires_approval  BOOLEAN NOT NULL DEFAULT FALSE
+);
+
+
+| status_name      | description                                                       | is_terminal | requires_approval |
+| ---------------- | ----------------------------------------------------------------- | ----------- | ----------------- |
+| draft            | Initial version. Under review; not approved or finalized.         | false       | false             |
+| pending_approval | Submitted and awaiting designated approval.                       | false       | true              |
+| approved         | Reviewed and confirmed; ready for use.                            | false       | true              |
+| executed         | Final, legally executed version.                                  | true        | true              |
+| archived         | Retained for history/compliance; inactive.                        | true        | false             |
+| sent             | Communication or document delivered to recipient.                 | false       | false             |
+| received         | Communication acknowledged or captured from external source.      | false       | false             |
+| open             | Ticket created and awaiting action.                               | false       | false             |
+| scheduled        | Task or reservation scheduled for a future date.                  | false       | true              |
+| paused           | Temporarily paused pending action or condition.                   | false       | false             |
+| completed        | Ticket resolved but not yet closed.                               | false       | false             |
+| closed           | Fully resolved and closed ticket.                                 | true        | false             |
+| active           | Currently active/operational.                                     | false       | false             |
+| beta             | In testing or pre-release phase.                                  | false       | true              |
+| paid_leave       | Team member on approved paid leave.                               | false       | true              |
+| unpaid_leave     | Team member on unpaid leave.                                      | false       | true              |
+| onboarding       | Being added, set up, or integrated into the system.               | false       | false             |
+| offboarding      | Being removed or transitioned out of active use.                  | false       | false             |
+| inactive         | Temporarily or permanently not in use.                            | false       | false             |
+| maintenance_hold | Property unavailable due to major maintenance or renovation.      | false       | true              |
+| long_term_rental | Property occupied by long-term tenant; not available for STR.     | false       | true              |
+| owner_hold       | Homeowner has temporarily blocked short-term rental availability. | false       | false             |
+| confirmed        | Reservation booked and acknowledged.                              | false       | false             |
+| arrived          | Guest has checked in.                                             | false       | false             |
+| departed         | Guest has completed their stay.                                   | true        | false             |
+| cancelled        | Reservation cancelled prior to stay.                              | true        | false             |
+| signed           | Tax form officially signed.                                       | false       | true              |
+| filed            | Tax form submitted; legally complete.                             | true        | true              |
+| terminated       | Permanently deactivated; never reusable.                          | true        | true              |
+| nurture          | Guest not actively renting but relationship continues.            | false       | false             |
+| blocked          | Guest permanently barred from renting.                            | true        | true              |
+| complete         | Payroll run or ticket completed successfully.                     | true        | true              |
+| void             | Record canceled or invalidated.                                   | true        | true              |
+| recorded         | Financial transaction/receipt posted to the ledger.               | true        | true              |
+| refund_outbound  | Outbound reversal; money sent out.                                | true        | true              |
+| return_inbound   | Inbound reversal; money returned.                                 | true        | true              |
+
+
+
+| status_name      | applies_to |
+| ---------------- | ---------- |
+| draft            | DOC        |
+| draft            | PRM        |
+| draft            | FIN        |
+| draft            | TAX        |
+| draft            | PAY        |
+| draft            | AIT        |
+| pending_approval | DOC        |
+| pending_approval | PRM        |
+| pending_approval | FIN        |
+| pending_approval | TAX        |
+| pending_approval | PAY        |
+| pending_approval | RCT        |
+| pending_approval | TRX        |
+| approved         | DOC        |
+| approved         | PRM        |
+| approved         | FIN        |
+| approved         | PAY        |
+| approved         | TRX        |
+| executed         | DOC        |
+| archived         | DOC        |
+| archived         | PRM        |
+| archived         | FIN        |
+| archived         | TAX        |
+| archived         | PAY        |
+| archived         | RCT        |
+| archived         | TRX        |
+| archived         | IDX        |
+| sent             | CTH        |
+| sent             | CMSG       |
+| sent             | DOC        |
+| received         | CTH        |
+| received         | CMSG       |
+| received         | DOC        |
+| open             | TIK        |
+| scheduled        | TIK        |
+| scheduled        | RSV        |
+| paused           | TIK        |
+| paused           | DOC        |
+| paused           | INT        |
+| paused           | PRP        |
+| completed        | TIK        |
+| closed           | TIK        |
+| active           | INT        |
+| active           | HO         |
+| active           | PRP        |
+| active           | CON        |
+| active           | GST        |
+| active           | HPRX       |
+| active           | AIT        |
+| beta             | AIT        |
+| paid_leave       | INT        |
+| unpaid_leave     | INT        |
+| onboarding       | INT        |
+| onboarding       | PRP        |
+| onboarding       | HO         |
+| onboarding       | IDX        |
+| offboarding      | INT        |
+| offboarding      | PRP        |
+| offboarding      | HO         |
+| offboarding      | IDX        |
+| inactive         | INT        |
+| inactive         | HO         |
+| inactive         | PRP        |
+| inactive         | CON        |
+| inactive         | GST        |
+| inactive         | HPRX       |
+| inactive         | AIT        |
+| maintenance_hold | PRP        |
+| long_term_rental | PRP        |
+| owner_hold       | PRP        |
+| confirmed        | RSV        |
+| arrived          | RSV        |
+| departed         | RSV        |
+| cancelled        | RSV        |
+| signed           | TAX        |
+| filed            | TAX        |
+| terminated       | INT        |
+| terminated       | HO         |
+| nurture          | GST        |
+| blocked          | GST        |
+| complete         | PAY        |
+| complete         | TIK        |
+| void             | TRX        |
+| void             | RCT        |
+| void             | PAY        |
+| recorded         | RCT        |
+| recorded         | TRX        |
+| refund_outbound  | TRX        |
+| return_inbound   | TRX        |
+
+
+3) ref.status_transition rows
+
+Schema
+
+CREATE TABLE ref.status_transition (
+    from_status TEXT NOT NULL,
+    to_status   TEXT NOT NULL,
+    PRIMARY KEY (from_status, to_status),
+    FOREIGN KEY (from_status) REFERENCES ref.status_type_key(status_name),
+    FOREIGN KEY (to_status)   REFERENCES ref.status_type_key(status_name)
+);
+
+| from_status      | to_status        |
+| ---------------- | ---------------- |
+| draft            | pending_approval |
+| draft            | archived         |
+| pending_approval | approved         |
+| pending_approval | archived         |
+| approved         | executed         |
+| approved         | archived         |
+| sent             | archived         |
+| sent             | received         |
+| received         | archived         |
+| open             | scheduled        |
+| open             | paused           |
+| open             | completed        |
+| open             | closed           |
+| scheduled        | completed        |
+| scheduled        | paused           |
+| scheduled        | closed           |
+| paused           | scheduled        |
+| paused           | active           |
+| paused           | completed        |
+| completed        | closed           |
+| closed           | archived         |
+| active           | inactive         |
+| active           | paid_leave       |
+| active           | unpaid_leave     |
+| active           | offboarding      |
+| beta             | active           |
+| beta             | archived         |
+| beta             | draft            |
+| paid_leave       | active           |
+| paid_leave       | offboarding      |
+| unpaid_leave     | active           |
+| unpaid_leave     | offboarding      |
+| onboarding       | active           |
+| offboarding      | inactive         |
+| offboarding      | archived         |
+| inactive         | active           |
+| maintenance_hold | active           |
+| maintenance_hold | inactive         |
+| maintenance_hold | offboarding      |
+| long_term_rental | active           |
+| long_term_rental | inactive         |
+| long_term_rental | offboarding      |
+| owner_hold       | active           |
+| owner_hold       | inactive         |
+| owner_hold       | offboarding      |
+| confirmed        | arrived          |
+| confirmed        | cancelled        |
+| arrived          | departed         |
+| departed         | archived         |
+| cancelled        | archived         |
+| signed           | filed            |
+
+(And all remaining terminal statuses with no allowed transitions are omitted here: executed, archived, filed, terminated, nurture, blocked, complete, void, recorded, refund_outbound, return_inbound.)
+
+How do the statuses stay unique?
+
+They’re already unique via the primary key:
+
+CREATE TABLE ref.status_type_key (
+    status_name        TEXT PRIMARY KEY,
+    description        TEXT NOT NULL,
+    is_terminal        BOOLEAN NOT NULL DEFAULT FALSE,
+    requires_approval  BOOLEAN NOT NULL DEFAULT FALSE
+);
+
+
+PRIMARY KEY on status_name means:
+
+You cannot insert two rows with the same status_name.
+
+Any table that references a status via status_name will be forced to use a valid, existing value (via FK).
+
+If you reference ref.status_type_key from ops tables like:
+
+ALTER TABLE ops.reservations
+  ADD CONSTRAINT fk_reservation_status
+  FOREIGN KEY (reservation_status)
+  REFERENCES ref.status_type_key(status_name);
+
+
+then reservation_status IS the “ID” for that status, enforced by the PK/FK pair.
+
+Conclusion:
+You do not technically need a separate numeric/UUID column for uniqueness. status_name is the natural primary key.
+
+Do we need an ID on ref.status_applies_to?
+
+Schema:
+
+CREATE TABLE ref.status_applies_to (
+    status_name TEXT NOT NULL,
+    applies_to  TEXT NOT NULL,  -- e.g. 'DOC', 'RSV'
+    PRIMARY KEY (status_name, applies_to),
+    FOREIGN KEY (status_name) REFERENCES ref.status_type_key(status_name)
+);
+
+
+Here the pair (status_name, applies_to) is the composite primary key.
+
+That guarantees:
+
+You cannot assign the same status to the same domain twice.
+
+You can still reuse a status across multiple domains (approved → DOC, FIN, TRX, etc.).
+
+You do not need a separate id column unless you want one for convenience. Relationally, the composite PK is sufficient and clean.
+
+When would we add a separate status_id (surrogate key)?
+
+You’d introduce a separate ID only if:
+
+You expect to rename statuses often but don’t want to touch all referencing tables/rows.
+
+You must align with external systems that use their own keys and you want a stable internal key independent of status_name.
+
+You want to keep status_name purely descriptive and allow duplicates across some context (not your case).
+
+If you decide to go that route later, you’d do something like:
+
+CREATE TABLE ref.status_type_key (
+    status_id         TEXT PRIMARY KEY,           -- e.g. 'STS-ACT'
+    status_name       TEXT NOT NULL UNIQUE,       -- e.g. 'active'
+    description       TEXT NOT NULL,
+    is_terminal       BOOLEAN NOT NULL DEFAULT FALSE,
+    requires_approval BOOLEAN NOT NULL DEFAULT FALSE
+);
+
+
+And then:
+
+CREATE TABLE ref.status_applies_to (
+    status_id  TEXT NOT NULL,
+    applies_to TEXT NOT NULL,
+    PRIMARY KEY (status_id, applies_to),
+    FOREIGN KEY (status_id) REFERENCES ref.status_type_key(status_id)
+);
+
+
+Plus FKs from ops tables to status_id instead of status_name.
+
+Here are the three tables exactly as they would exist conceptually — no SQL, just the table structures with columns and explanatory notes.
+
+1) STATUS TYPE KEY
+
+Purpose: Master list of all statuses (one row per unique status).
+
+Table: status_type_key
+Column	Type	Meaning
+status_name	text (PK)	Unique identifier for the status (e.g., active, approved, cancelled).
+description	text	Meaning and clarity for ops.
+is_terminal	boolean	Whether no further transitions are allowed.
+requires_approval	boolean	Whether approval is required to enter this status.
+
+Notes:
+
+status_name is the unique ID.
+
+No numeric ID is needed unless we later decide on surrogate keys.
+
+This is the authoritative status dictionary.
+
+2) STATUS APPLIES TO
+
+Purpose: Defines where each status is valid (DOC, RSV, TIK, PRP, GST, etc.).
+
+Table: status_applies_to
+Column	Type	Meaning
+status_name	text (FK → status_type_key.status_name)	The status.
+applies_to	text	The domain/entity the status applies to (e.g., RSV, PRP, DOC).
+(PK)	(status_name, applies_to)	Composite key ensures uniqueness.
+
+Notes:
+
+No ID column needed — the pair makes each row unique.
+
+This is a clean, normalized many-to-many link.
+
+Example: approved might apply to: DOC, PRM, FIN, PAY, TRX.
+
+3) STATUS TRANSITION
+
+Purpose: Defines what statuses can legitimately follow another.
+
+Table: status_transition
+Column	Type	Meaning
+from_status	text (FK)	Starting status.
+to_status	text (FK)	Allowed next status.
+(PK)	(from_status, to_status)	Composite primary key.
+
+Notes:
+
+No ID column needed — the relationship pair is the unique identifier.
+
+Supports workflows and validation logic.
+
+Example: pending_approval → approved, approved → executed.
